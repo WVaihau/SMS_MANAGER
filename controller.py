@@ -1,3 +1,4 @@
+from collections import Counter
 import streamlit_authenticator as stauth
 import streamlit as st
 import pandas as pd
@@ -33,6 +34,30 @@ def process_df(df: pd.DataFrame) -> pd.DataFrame:
       lambda name: ''.join(name.split("'")))
 
     return filtered_df
+
+
+def find_most_common_strings(string_list):
+    """
+    Finds the strings with the most occurrences in a list of strings.
+
+    Args:
+        string_list (list): A list of strings.
+
+    Returns:
+        list: A list containing the strings with the most
+        occurrences in the input list.
+    """
+    # Count occurrences of each string in the list
+    string_counts = Counter(string_list)
+
+    # Find the highest number of occurrences
+    max_occurrences = max(string_counts.values())
+
+    # Find strings with the highest number of occurrences
+    most_common_strings = [string for string, count in string_counts.items()
+                           if count == max_occurrences]
+
+    return most_common_strings
 
 
 @st.cache_data
@@ -73,17 +98,33 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
 
             st.markdown("## Récupération des numéros clients pour livraisons")
 
+            cities = sorted(df["SHIPPING_CITY"].unique().tolist())
             shipping_cities = st.multiselect(
               'Communes à desservir ?',
-              sorted(df["SHIPPING_CITY"].unique().tolist()),
-              ["Papeete"])
+              cities,
+              find_most_common_strings(df["SHIPPING_CITY"].tolist()))
 
-            if len(shipping_cities) != 0:
+            products = sorted(df["PRODUCT_NAME"].unique().tolist())
+            picked_products = st.multiselect(
+              'Produits concernées ?',
+              products,
+              find_most_common_strings(df["PRODUCT_NAME"].tolist())
+            )
+
+            if len(shipping_cities) != 0 and len(picked_products) != 0:
                 filtered_df = df[df['SHIPPING_CITY'].isin(shipping_cities)]
+                filtered_df = filtered_df[
+                    filtered_df['PRODUCT_NAME'].isin(picked_products)]
 
                 st.write(
                   "Données clients après applications des filtres: ",
                   filtered_df)
+
+                missing_phone_df = filtered_df[pd.isna(
+                    filtered_df['CLIENT_PHONE'])]
+
+                filtered_df = filtered_df[~pd.isna(
+                    filtered_df['CLIENT_PHONE'])]
 
                 phone_numbers = ", ".join(
                   filtered_df["CLIENT_PHONE"].unique().tolist())
@@ -93,9 +134,25 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
                 qrcode_svg = get_qr(phone_numbers)
 
                 st.markdown("**Also get the list with this qrcode:**")
-                left_co, cent_co, last_co = st.columns(3)
+                _, cent_co, _ = st.columns(3)
                 with cent_co:
                     st.image(qrcode_svg, width=300)
+
+                if len(missing_phone_df) >= 1:
+                    st.warning(
+                        "Les personnes suivantes sont dans les communes"
+                        " sélectionnées, mais n'ont pas donné de"
+                        " numéro de téléphone: "
+                        )
+                    st.dataframe(
+                        missing_phone_df[
+                            ["ID",
+                             "PURCHASED_DATE",
+                             "SHIPPING_CITY",
+                             "PRODUCT_NAME",
+                             "CLIENT_NAME"]],
+                        use_container_width=True,
+                        hide_index=True)
 
                 st.markdown("## Télécharger les fichiers")
                 col1, col2 = st.columns(2)
@@ -116,11 +173,12 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
 
             else:
                 st.warning(
-                  "Sélectionne au moins 1 colonne pour continuer..")
+                  "Sélectionne au moins 1 commune"
+                  " et 1 produit pour continuer..")
 
         except Exception as e:
             st.error(f"Error: {e}")
 
-    c1, c2, c3 = st.columns(3)
+    _, c2, _ = st.columns(3)
     with c2:
         authenticator.logout('Se déconnecter', 'main')
