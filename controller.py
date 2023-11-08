@@ -103,7 +103,7 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
               'Communes à desservir ?',
               cities,
               find_most_common_strings(df["SHIPPING_CITY"].tolist()),
-              help="La commune avec le plus de demande est sélectionné par"
+              help="La commune avec le plus de demande est sélectionnée par"
               " défaut"
               )
 
