@@ -29,8 +29,8 @@ def process_df(df: pd.DataFrame) -> pd.DataFrame:
     # Rename the columns
     filtered_df.rename(columns=md.rename_columns, inplace=True)
 
-    filtered_df["CLIENT_PHONE"] = filtered_df["CLIENT_PHONE"].map(
-      lambda phone: f"+{phone}")
+    filtered_df["SHIPPING_CITY"] = filtered_df["SHIPPING_CITY"].map(
+      lambda name: ''.join(name.split("'")))
 
     return filtered_df
 
@@ -64,7 +64,7 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
     if uploaded_file is not None:
         try:
             # Read CSV file into a Pandas DataFrame
-            df = process_df(pd.read_csv(uploaded_file))
+            df = process_df(pd.read_csv(uploaded_file, dtype=str))
             st.success("Chargement du fichier client réussi")
 
             st.markdown("**Vue générale**")
@@ -75,7 +75,7 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
 
             shipping_cities = st.multiselect(
               'Communes à desservir ?',
-              df["SHIPPING_CITY"].unique(),
+              sorted(df["SHIPPING_CITY"].unique().tolist()),
               ["Papeete"])
 
             if len(shipping_cities) != 0:
