@@ -102,13 +102,17 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
             shipping_cities = st.multiselect(
               'Communes à desservir ?',
               cities,
-              find_most_common_strings(df["SHIPPING_CITY"].tolist()))
+              find_most_common_strings(df["SHIPPING_CITY"].tolist()),
+              help="La commune avec le plus de demande est sélectionné par"
+              " défaut"
+              )
 
             products = sorted(df["PRODUCT_NAME"].unique().tolist())
             picked_products = st.multiselect(
               'Produits concernées ?',
               products,
-              find_most_common_strings(df["PRODUCT_NAME"].tolist())
+              find_most_common_strings(df["PRODUCT_NAME"].tolist()),
+              help="Le produit le plus demandé est sélectionné par défaut"
             )
 
             if len(shipping_cities) != 0 and len(picked_products) != 0:
