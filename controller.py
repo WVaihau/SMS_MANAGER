@@ -55,7 +55,7 @@ def get_qr(text: str):
 def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
     """Upload CSV."""
 
-    st.title("Iaorana")
+    st.title("Iaora Shopping 987")
 
     uploaded_file = st.file_uploader(
       "Importer le fichier csv client",
