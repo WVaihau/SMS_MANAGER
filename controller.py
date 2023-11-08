@@ -52,7 +52,6 @@ def get_qr(text: str):
     return image_bytes
 
 
-
 def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
     """Upload CSV."""
 
@@ -76,7 +75,7 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
 
             shipping_cities = st.multiselect(
               'Communes à desservir ?',
-              df["SHIPPING_CITY"],
+              df["SHIPPING_CITY"].unique(),
               ["Papeete"])
 
             if len(shipping_cities) != 0:
