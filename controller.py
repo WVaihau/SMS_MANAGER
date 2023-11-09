@@ -132,10 +132,14 @@ def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
 
                 phone_numbers = ", ".join(
                   filtered_df["CLIENT_PHONE"].unique().tolist())
-                st.write("Liste des numéros clients:")
-                st.code(phone_numbers)
 
-                qrcode_svg = get_qr(phone_numbers)
+                parsed_phones = (f"+68989533974, +68987252023, {phone_numbers}"
+                                 ", +68987326969")
+
+                st.write("Liste des numéros clients:")
+                st.code(parsed_phones)
+
+                qrcode_svg = get_qr(parsed_phones)
 
                 st.markdown("**Also get the list with this qrcode:**")
                 _, cent_co, _ = st.columns(3)
