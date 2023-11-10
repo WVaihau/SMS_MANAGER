@@ -1,10 +1,11 @@
 from collections import Counter
+from datetime import datetime
+import io
+import model as md
+import pandas as pd
+import qrcode
 import streamlit_authenticator as stauth
 import streamlit as st
-import pandas as pd
-import model as md
-import qrcode
-import io
 
 
 def auth_usr() -> stauth.Authenticate:
@@ -22,6 +23,16 @@ def auth_usr() -> stauth.Authenticate:
     return authenticator
 
 
+def get_today_date():
+    """Return today date."""
+    return datetime.now()
+
+
+def get_msg_template():
+    """Return message template."""
+    return md.msg_template
+
+
 def process_df(df: pd.DataFrame) -> pd.DataFrame:
     """Process df"""
     # Filter DataFrame based on columns to keep
@@ -34,6 +45,56 @@ def process_df(df: pd.DataFrame) -> pd.DataFrame:
       lambda name: ''.join(name.split("'")))
 
     return filtered_df
+
+
+def parse_phone_number(df: pd.DataFrame) -> str:
+    """Parse phone numbers"""
+    phone_numbers = ", ".join(df["CLIENT_PHONE"].unique().tolist())
+
+    parsed_phone_numbers = st.secrets.phones.template.format(
+        phone_numbers=phone_numbers
+    )
+
+    return parsed_phone_numbers
+
+
+def apply_filter(
+        p_df: pd.DataFrame,
+        cities: list) -> pd.DataFrame:
+    """Apply filter on given df."""
+    df = p_df.copy(deep=True)
+
+    df = df[df["SHIPPING_CITY"].isin(cities)]
+
+    raw_missing_phone_df = df[pd.isna(df["CLIENT_PHONE"])]
+    missing_phone_df = raw_missing_phone_df[md.cols_missing_phone_df]
+
+    df_nona = df[~pd.isna(df['CLIENT_PHONE'])]
+    parsed_phones = parse_phone_number(df_nona)
+
+    parsed_phones_qrcode = get_qr(f"{parsed_phones}")
+
+    return df, parsed_phones, parsed_phones_qrcode, missing_phone_df
+
+
+def format_date_french(date):
+    months = [
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre"
+    ]
+
+    days = [
+        "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"
+    ]
+
+    rday_of_week = days[date.weekday()]
+    day_of_week = rday_of_week[0].upper() + rday_of_week[1:]
+    day_number = date.day
+    month = months[date.month - 1]  # Month index starts from 1
+    year = date.year
+
+    formatted_date = f"{day_of_week} {day_number} {month} {year}"
+    return formatted_date
 
 
 def find_most_common_strings(string_list):
@@ -57,7 +118,7 @@ def find_most_common_strings(string_list):
     most_common_strings = [string for string, count in string_counts.items()
                            if count == max_occurrences]
 
-    return most_common_strings
+    return sorted(most_common_strings)
 
 
 @st.cache_data
@@ -77,116 +138,52 @@ def get_qr(text: str):
     return image_bytes
 
 
-def csv_uploader(authenticator: stauth.Authenticate) -> pd.DataFrame:
-    """Upload CSV."""
+def get_unique_list(
+        df: pd.DataFrame,
+        col: str,
+        unique: bool = False,
+        sort: bool = True) -> list:
+    """Get unique list from 'col' in 'df'"""
+    values = df.copy(deep=True)[col]
 
-    st.title("Iaora Shopping 987")
+    if unique:
+        values = values.unique()
 
-    uploaded_file = st.file_uploader(
-      "Importer le fichier csv client",
-      type=["csv"])
+    values = values.tolist()
 
-    if uploaded_file is not None:
-        try:
-            # Read CSV file into a Pandas DataFrame
-            df = process_df(pd.read_csv(uploaded_file, dtype=str))
-            st.success("Chargement du fichier client réussi")
+    if sort:
+        values = sorted(values)
 
-            st.markdown("**Vue générale**")
-            # Display the DataFrame
-            st.dataframe(df)
+    return values
 
-            st.markdown("## Récupération des numéros clients pour livraisons")
 
-            cities = sorted(df["SHIPPING_CITY"].unique().tolist())
-            shipping_cities = st.multiselect(
-              'Communes à desservir ?',
-              cities,
-              find_most_common_strings(df["SHIPPING_CITY"].tolist()),
-              help="La commune avec le plus de demande est sélectionnée par"
-              " défaut"
-              )
+def get_variables(df: pd.DataFrame) -> list:
+    """Variables based on client file."""
+    return (
+        get_unique_list(
+            df,
+            "SHIPPING_CITY",
+            unique=True,
+            sort=True
+        ),
+        get_unique_list(
+            df,
+            "PRODUCT_NAME",
+            unique=True,
+            sort=True
+        )
+    )
 
-            products = sorted(df["PRODUCT_NAME"].unique().tolist())
-            picked_products = st.multiselect(
-              'Produits concernées ?',
-              products,
-              find_most_common_strings(df["PRODUCT_NAME"].tolist()),
-              help="Le produit le plus demandé est sélectionné par défaut"
-            )
 
-            if len(shipping_cities) != 0 and len(picked_products) != 0:
-                filtered_df = df[df['SHIPPING_CITY'].isin(shipping_cities)]
-                filtered_df = filtered_df[
-                    filtered_df['PRODUCT_NAME'].isin(picked_products)]
+def set_client_df() -> pd.DataFrame:
+    """Get client dataframe."""
 
-                st.write(
-                  "Données clients après applications des filtres: ",
-                  filtered_df)
+    file = st.file_uploader(
+        "📂 Importer le fichier client",
+        type=["csv"]
+    )
 
-                missing_phone_df = filtered_df[pd.isna(
-                    filtered_df['CLIENT_PHONE'])]
-
-                filtered_df = filtered_df[~pd.isna(
-                    filtered_df['CLIENT_PHONE'])]
-
-                phone_numbers = ", ".join(
-                  filtered_df["CLIENT_PHONE"].unique().tolist())
-
-                parsed_phones = (f"+68989533974, +68987252023, {phone_numbers}"
-                                 ", +68987326969")
-
-                st.write("Liste des numéros clients:")
-                st.code(parsed_phones)
-
-                qrcode_svg = get_qr(parsed_phones)
-
-                st.markdown("**Also get the list with this qrcode:**")
-                _, cent_co, _ = st.columns(3)
-                with cent_co:
-                    st.image(qrcode_svg, width=300)
-
-                if len(missing_phone_df) >= 1:
-                    st.warning(
-                        "Les personnes suivantes sont dans les communes"
-                        " sélectionnées, mais n'ont pas donné de"
-                        " numéro de téléphone: "
-                        )
-                    st.dataframe(
-                        missing_phone_df[
-                            ["ID",
-                             "PURCHASED_DATE",
-                             "SHIPPING_CITY",
-                             "PRODUCT_NAME",
-                             "CLIENT_NAME"]],
-                        use_container_width=True,
-                        hide_index=True)
-
-                st.markdown("## Télécharger les fichiers")
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    st.download_button(
-                      label="Download Raw Client Data",
-                      data=convert_df(df),
-                      file_name='raw_client_data.csv',
-                      mime='text/csv')
-
-                with col2:
-                    st.download_button(
-                      label="Download Filtered Client Data",
-                      data=convert_df(filtered_df),
-                      file_name='filtered_client_data.csv',
-                      mime='text/csv')
-
-            else:
-                st.warning(
-                  "Sélectionne au moins 1 commune"
-                  " et 1 produit pour continuer..")
-
-        except Exception as e:
-            st.error(f"Error: {e}")
-
-    _, c2, _ = st.columns(3)
-    with c2:
-        authenticator.logout('Se déconnecter', 'main')
+    if file is not None:
+        return process_df(pd.read_csv(file, dtype=str))
+    else:
+        return None
