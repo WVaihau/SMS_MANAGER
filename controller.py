@@ -191,4 +191,4 @@ def set_client_df() -> pd.DataFrame:
     if file is not None:
         return process_df(pd.read_csv(file, dtype=str))
     else:
-        return None
+        return None, pd.DataFrame()

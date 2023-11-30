@@ -68,14 +68,23 @@ def main():
 
                 with cparams:
                     "### Parametrage"
-                    cities = st.multiselect(
-                        ':world_map: Communes à desservir',
-                        sorted_lcities,
-                        ctrl.find_most_common_strings(
-                            lcities.tolist()),
-                        help="La commune avec le plus de demande est"
-                        " sélectionnée par défaut"
-                    )
+
+                    bool_all_tel = st.checkbox(
+                        'Récupérer tout les numéros',
+                        value=True)
+
+                    cities = sorted_lcities
+
+                    if not bool_all_tel:
+                        cities = st.multiselect(
+                            ':world_map: Communes à desservir',
+                            sorted_lcities,
+                            ctrl.find_most_common_strings(
+                                lcities.tolist()),
+                            help="La commune avec le plus de demande est"
+                            " sélectionnée par défaut"
+                        )
+
                     str_cities = ", ".join(cities)
 
                 if len(cities) != 0 and len(product) != 0:
@@ -86,18 +95,18 @@ def main():
                         missing_phone_df) = ctrl.apply_filter(
                             sub_df,
                             cities)
-
-                    with cparams:
-                        "### Résumé"
-                        "**Produit** :"
-                        f"   - Nom :  {product}"
-                        (
-                            "   - Prix unitaire :"
-                            f"  {product_price} {product_currency}")
-                        f"**Communes à desservir**: {str_cities}"
-                        (
-                            "**Nombre de clients concernés**:"
-                            f" {filtered_df.shape[0]}")
+                    if not bool_all_tel:
+                        with cparams:
+                            "### Résumé"
+                            "**Produit** :"
+                            f"   - Nom :  {product}"
+                            (
+                                "   - Prix unitaire :"
+                                f"  {product_price} {product_currency}")
+                            f"**Communes à desservir**: {str_cities}"
+                            (
+                                "**Nombre de clients concernés**:"
+                                f" {filtered_df.shape[0]}")
 
                     with coutput:
                         st.write("Liste des numéros clients:")
