@@ -41,10 +41,15 @@ def process_df(df: pd.DataFrame) -> pd.DataFrame:
     # Rename the columns
     filtered_df.rename(columns=md.rename_columns, inplace=True)
 
+    df_with_any_na = filtered_df[filtered_df.isna().any(axis=1)]
+
+    filtered_df = filtered_df.dropna(
+        subset=['SHIPPING_CITY'])
+
     filtered_df["SHIPPING_CITY"] = filtered_df["SHIPPING_CITY"].map(
       lambda name: ''.join(name.split("'")))
 
-    return filtered_df
+    return filtered_df, df_with_any_na
 
 
 def parse_phone_number(df: pd.DataFrame) -> str:

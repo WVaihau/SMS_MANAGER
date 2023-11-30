@@ -16,7 +16,7 @@ def main():
     if st.session_state["authentication_status"]:
         with st.sidebar:
             st.header(f"🌴 {name}")
-            df = ctrl.set_client_df()
+            df, df_none = ctrl.set_client_df()
 
         # Content
         st.title("🤙🏼 Iaora Shopping 987")
@@ -120,6 +120,13 @@ def main():
                     with st.expander("Fichier client avec les filtres"):
                         st.dataframe(
                             filtered_df.sort_values(by=["SHIPPING_CITY"]),
+                            use_container_width=True,
+                            hide_index=True
+                        )
+
+                    with st.expander("Fichier client avec données manquantes"):
+                        st.dataframe(
+                            df_none.sort_values(by=["ID"]),
                             use_container_width=True,
                             hide_index=True
                         )
